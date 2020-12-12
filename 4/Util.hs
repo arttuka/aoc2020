@@ -1,5 +1,7 @@
 module Util where
 
+import Data.Set (fromList, member)
+
 getLines :: IO [String]
 getLines = fmap lines getContents
 
@@ -11,3 +13,15 @@ readLines = readLinesWith read
 
 countWhere :: (a -> Bool) -> [a] -> Int
 countWhere pred = length . filter pred
+
+numericChars = fromList "0123456789"
+hexChars     = fromList "0123456789abcdef"
+
+isNumeric :: Char -> Bool
+isNumeric = (`member` numericChars)
+
+isHex :: Char -> Bool
+isHex = (`member` hexChars)
+
+between :: Int -> Int -> Int -> Bool
+between low high i = i >= low && i <= high
