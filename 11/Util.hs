@@ -1,6 +1,5 @@
 module Util where
 
-import Data.Maybe (mapMaybe)
 import Data.Vector (Vector, (!?))
 import Data.List.Split (splitOn)
 
@@ -22,11 +21,14 @@ readGroupsWith f = fmap f . splitOn [""] <$> getLines
 get :: Vector (Vector a) -> (Int, Int) -> Maybe a
 get v (x, y) = (v !? y) >>= (!? x)
 
-getMany :: Vector (Vector a) -> [(Int, Int)] -> [a]
-getMany = mapMaybe . get
+getMany :: Vector (Vector a) -> [(Int, Int)] -> [Maybe a]
+getMany = fmap . get
 
 tAdd :: Num a => (a, a) -> (a, a) -> (a, a)
 tAdd (a, b) (c, d) = (a + c, b + d)
+
+iterateTail :: (a -> a) -> a -> [a]
+iterateTail = (tail .) . iterate
 
 consecutiveSame :: Eq a => [a] -> a
 consecutiveSame (x:y:ys)
