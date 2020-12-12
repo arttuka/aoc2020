@@ -5,24 +5,32 @@ import Data.List (sort)
 import Data.Vector (Vector, (!), fromList, length)
 import Util
 
-findPair' :: Vector Int -> Int -> Int -> Int -> Maybe (Int, Int)
-findPair' ints target i j
+findPair :: Vector Int -> Int -> Int -> Int -> Maybe (Int, Int)
+findPair ints target i j
     | i == j            = Nothing
     | (x + y) == target = Just (x, y)
-    | (x + y) < target  = findPair' ints target (i + 1) j
-    | otherwise         = findPair' ints target i (j - 1)
+    | (x + y) < target  = findPair ints target (i + 1) j
+    | otherwise         = findPair ints target i (j - 1)
   where
     x = ints ! i
     y = ints ! j
 
-findPair :: [Int] -> Int -> Maybe (Int, Int)
-findPair ints target = findPair' intvec target 0 (length intvec - 1)
+findTriplet' :: Vector Int -> Int -> Int -> Maybe (Int, Int, Int)
+findTriplet' ints target k
+    | k == l - 3  = Nothing
+    | otherwise   = case findPair ints (target - z) (k + 1) (l - 1) of
+      Nothing -> findTriplet' ints target (k + 1)
+      Just (x, y) -> Just (x, y, z)
   where
-    intvec = fromList ints
+    l = length ints
+    z = ints ! k
+
+findTriplet :: [Int] -> Int -> Maybe (Int, Int, Int)
+findTriplet ints target = findTriplet' (fromList (sort ints)) target 0
 
 main :: IO ()
-main = do nums <- Util.readLines :: IO [Int]
-          let result = findPair (sort nums) 2020
+main = do ints <- Util.readLines :: IO [Int]
+          let result = findTriplet ints 2020
           putStrLn $ case result of
             Nothing -> "No result"
-            Just (x, y) -> show (x * y)
+            Just (x, y, z) -> show (x * y * z)
