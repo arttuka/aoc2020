@@ -13,9 +13,11 @@ parseEntry s = (low, hi, head c, pass)
     [low, hi] = map (read :: String -> Int) $ splitOn "-" lim
 
 isValid :: Entry -> Bool
-isValid (low, hi, c, pass) = cnt >= low && cnt <= hi
+isValid (low, hi, c, pass) = (a == c || b == c) && a /= b
   where
-    cnt = countWhere (== c) pass
+    a = pass !! (low - 1)
+    b = pass !! (hi - 1)
+
 
 main :: IO ()
 main = do entries <- readLinesWith parseEntry
