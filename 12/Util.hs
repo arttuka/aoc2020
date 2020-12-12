@@ -20,5 +20,9 @@ readGroupsWith f = fmap f . splitOn [""] <$> getLines
 tMul :: (Int, Int) -> Int -> (Int, Int)
 tMul (x, y) n = (x * n, y * n)
 
+rotate :: Int -> (Int, Int) -> (Int, Int)
+rotate 0 pos = pos
+rotate n (x, y) = rotate (n - 1) (- y, x)
+
 tAdd :: (Int, Int) -> (Int, Int) -> (Int, Int)
 tAdd (a, b) (c, d) = (a + c, b + d)
