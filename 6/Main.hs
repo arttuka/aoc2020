@@ -1,11 +1,10 @@
 module Main where
 
-import Control.Monad (join)
-import Data.Set (fromList, size)
+import Data.Set (fromList, intersection, size)
 import Util (readGroupsWith)
 
 readGroup :: [String] -> Int
-readGroup = size . fromList . join
+readGroup = size . foldl1 intersection . fmap fromList
 
 main :: IO ()
 main = do groups <- readGroupsWith readGroup
