@@ -3,17 +3,20 @@ module Main where
 import Data.Vector (Vector, (!), fromList)
 import Util (readLinesWith)
 
-findRoute :: [Vector Char] -> Int
-findRoute lines = findRoute' lines 0
+findRoute :: [Vector Char] -> (Int, Int) -> Int
+findRoute lines (dx, dy) = findRoute' lines 0
   where
     w                         = length (head lines)
     findRoute' :: [Vector Char] -> Int -> Int
     findRoute' [] _           = 0
-    findRoute' (line:lines) x = add + findRoute' lines x'
+    findRoute' (line:lines) x = add + findRoute' (drop (dy - 1) lines) x'
       where
         add = if line ! x == '#' then 1 else 0
-        x'  = (x + 3) `mod` w
+        x'  = (x + dx) `mod` w
+
+slopes = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)]
 
 main :: IO ()
 main = do lines <- readLinesWith fromList
-          print $ findRoute lines
+          let results = map (findRoute lines) slopes
+          print $ product results
