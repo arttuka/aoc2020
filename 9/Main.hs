@@ -2,7 +2,7 @@ module Main where
 
 import Prelude hiding (length)
 import Data.List (sort)
-import Data.Vector ((!), fromList, length)
+import Data.Vector ((!), fromList, length, toList, slice)
 import Util (readLines)
 
 window = 25
@@ -27,10 +27,24 @@ findInvalidNumber prevNums (x:xs)
   | findPair prevNums x = findInvalidNumber (take window (x:prevNums)) xs
   | otherwise           = Just x
 
+findSet :: Int -> [Int] -> Maybe [Int]
+findSet target nums = findSet' 0 1
+  where
+    vec = fromList nums
+    max = length vec
+    findSet' :: Int -> Int -> Maybe [Int]
+    findSet' i l
+        | i + l == max = Nothing
+        | total == target = Just $ toList subvec
+        | total < target  = findSet' i (l + 1)
+        | otherwise       = findSet' (i + 1) (l - 1)
+      where
+        subvec = slice i l vec
+        total = sum subvec
+
 main :: IO ()
 main = do nums <- readLines :: IO [Int]
-          let (preamble, inputs) = splitAt window nums
-              invalidNumber      = findInvalidNumber (reverse preamble) inputs
-          putStrLn $ case invalidNumber of
-            (Just i) -> show i
-            Nothing  -> "Number not found"
+          let foundSet = findSet 177777905 nums
+          putStrLn $ case foundSet of
+            (Just nums) -> show (maximum nums + minimum nums)
+            Nothing  -> "Set not found"
