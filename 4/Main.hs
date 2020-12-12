@@ -5,7 +5,7 @@ import Data.Map.Strict (fromList, lookup)
 import Data.List.Split (splitOn)
 import qualified Data.Set as Set
 import Text.Read (readMaybe)
-import Util (getLines, countWhere, isNumeric, isHex, between)
+import Util (readGroupsWith, countWhere, isNumeric, isHex, between)
 
 keys = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"]
 
@@ -82,6 +82,5 @@ isValid p =   validate validateByr (byr p)
            && validate validatePid (pid p)
 
 main :: IO ()
-main = do lines <- getLines
-          let passports = map readPassport $ splitOn [""] lines
+main = do passports <- readGroupsWith readPassport
           print $ countWhere isValid passports
