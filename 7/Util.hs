@@ -5,14 +5,17 @@ import Data.List.Split (splitOn)
 getLines :: IO [String]
 getLines = fmap lines getContents
 
+readWith :: ([String] -> a) -> IO a
+readWith = (<$> getLines)
+
 readLinesWith :: (String -> a) -> IO [a]
-readLinesWith f = (fmap . fmap) f getLines
+readLinesWith = readWith . fmap
 
 readLines :: Read a => IO [a]
 readLines = readLinesWith read
 
 readGroupsWith :: ([String] -> a) -> IO [a]
-readGroupsWith f = fmap f <$> fmap (splitOn [""]) getLines
+readGroupsWith f = fmap f . splitOn [""] <$> getLines
 
 dropLast :: Int -> [a] -> [a]
 dropLast n xs = take (length xs - n) xs

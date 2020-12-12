@@ -12,4 +12,4 @@ readLines :: Read a => IO [a]
 readLines = readLinesWith read
 
 readGroupsWith :: ([String] -> a) -> IO [a]
-readGroupsWith f = fmap f <$> fmap (splitOn [""]) getLines
+readGroupsWith f = fmap f . splitOn [""] <$> getLines

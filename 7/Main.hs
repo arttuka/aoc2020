@@ -3,14 +3,15 @@ module Main where
 import Prelude hiding (lookup)
 import Control.Monad ((<=<))
 import Data.Char (digitToInt)
+import Data.Function.Memoize
 import Data.Maybe (mapMaybe)
 import Data.List (foldl')
 import Data.List.Split (splitOn)
 import Data.Map.Strict (Map, empty, lookup, insertWith)
-import qualified Data.Set as Set
-import Util (getLines, dropLast)
+import Util (readWith, dropLast)
 
-type Edge = (String, String, Int)
+type Edge  = (String, String, Int)
+type Bag   = (String, Int)
 type Graph = Map String [Edge]
 
 readBags :: [String] -> [Edge]
@@ -31,20 +32,21 @@ readGraph = foldl' insertEdge empty . (readLine =<<)
     insertEdge :: Graph -> Edge -> Graph
     insertEdge m edge@(from, to, _) = insertWith (++) from [edge] $ insertWith (++) to [edge] m
 
-filterEdges :: Bool -> (String, Int) -> [Edge] -> [(String, Int)]
-filterEdges fwd (k, i) = mapMaybe filterEdge
+dfs :: Bool -> Graph -> String -> [Bag]
+dfs fwd g = memoFix step
   where
-    filterEdge :: Edge -> Maybe (String, Int)
-    filterEdge (x, y, j)
-        | k == from = Just (to, i * j)
-        | otherwise = Nothing
+    step :: (String -> [Bag]) -> String -> [Bag]
+    step stepRec k = (k, 1) : maybe [] (recurse <=< mapMaybe filterEdge) (lookup k g)
       where
-        (from, to) = if fwd then (x, y) else (y, x)
-
-dfs :: Bool -> Graph -> (String, Int) -> [(String, Int)]
-dfs fwd g x@(k, _) = x : maybe [] (dfs fwd g <=< filterEdges fwd x) (lookup k g)
+        filterEdge :: Edge -> Maybe Bag
+        filterEdge (from, to, i)
+            | fwd && k == from   = Just (to, i)
+            | not fwd && k == to = Just (from, i)
+            | otherwise          = Nothing
+        recurse :: Bag -> [Bag]
+        recurse (k, i) = fmap (* i) <$> stepRec k
 
 main :: IO ()
-main = do graph <- fmap readGraph getLines
-          let bags = Set.fromList $ tail $ fst <$> dfs False graph ("shiny gold", 1)
-          print $ length bags
+main = do graph <- readWith readGraph
+          let bags = tail $ snd <$> dfs True graph "shiny gold"
+          print $ sum bags
