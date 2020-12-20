@@ -15,7 +15,7 @@ readState lines = fromList $ mapcatIndexed readLine lines
     readLine :: Int -> String -> [Coord]
     readLine y = catMaybes . mapIndexed (readCube y)
     readCube :: Int -> Int -> Char -> Maybe Coord
-    readCube y x '#' = Just [x, y, 0]
+    readCube y x '#' = Just [x, y, 0, 0]
     readCube _ _ _   = Nothing
 
 getBounds :: Set Coord -> Bounds
