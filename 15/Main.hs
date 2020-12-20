@@ -26,4 +26,4 @@ speakNumber ((prev, n), spoken) = ((next, n + 1), nextSpoken)
 main :: IO ()
 main = do numbers <- readWith readNumbers
           let spoken = speakNumbers numbers
-          print $ spoken !! 2019
+          print $ spoken !! 29999999
