@@ -1,35 +1,27 @@
 module Main where
 
-import Data.List (sortOn)
+import Data.List (foldl1')
 import Data.List.Split (splitOn)
-import Data.Maybe (mapMaybe)
-import Util (readWith)
+import Data.Maybe (catMaybes)
+import Util (mmiLcm, readWith)
 
-nextDivisible :: Int -> Int -> Int
-nextDivisible n divisor = case m of
-    0 -> n
-    _ -> n + divisor - m
+readLines :: String -> [(Integer, Integer)]
+readLines = catMaybes . zipWith readLine [0..] . splitOn ","
   where
-    m = n `mod` divisor
-
-findNextBus :: Int -> [Int] -> (Int, Int)
-findNextBus ts ids = head $ sortOn snd possibilities
-  where
-    possibilities = zip ids $ map (nextDivisible ts) ids
-
-readIds :: String -> [Int]
-readIds = mapMaybe readId . splitOn ","
-  where
-    readId :: String -> Maybe Int
-    readId s = case s of
+    readLine :: Integer -> String -> Maybe (Integer, Integer)
+    readLine i s = case s of
       "x" -> Nothing
-      _   -> Just (read s)
+      _   -> Just (i, read s)
+    
+readInput :: [String] -> (Integer, [(Integer, Integer)])
+readInput [a,b] = (read a, readLines b)
 
-readInput :: [String] -> (Int, [Int])
-readInput [a,b] = (read a, readIds b)
+combineLines :: (Integer, Integer) -> (Integer, Integer) -> (Integer, Integer)
+combineLines (s, oldMod) (d, newMod) = (x * newMod - d, lcm)
+  where
+    (mmi, lcm) = mmiLcm newMod oldMod
+    x = ((d + s) * mmi) `mod` oldMod 
 
 main :: IO ()
-main = do (ts, ids) <- readWith readInput
-          let (id, nextTs) = findNextBus ts ids
-          print (id, nextTs)
-          print $ id * (nextTs - ts)
+main = do (ts, lines) <- readWith readInput
+          print $ foldl1 combineLines lines
