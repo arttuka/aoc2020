@@ -1,6 +1,7 @@
 module Util where
 
 import Data.List.Split (splitOn)
+import Data.Set (Set, elemAt, size)
 
 getLines :: IO [String]
 getLines = fmap lines getContents
@@ -22,3 +23,11 @@ between lo hi x = lo <= x && x <= hi
 
 anyPred :: [a -> Bool] -> a -> Bool
 anyPred preds x = any (\f -> f x) preds
+
+isSingleton :: Set a -> Bool
+isSingleton = (1 ==) . size
+
+getSingleton :: Set a -> Maybe a
+getSingleton s = case size s of
+  1 -> Just (elemAt 0 s)
+  _ -> Nothing
