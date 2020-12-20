@@ -1,22 +1,30 @@
+{-# LANGUAGE TupleSections #-}
 module Main where
 
 import Prelude hiding (replicate)
 import Data.Bits ((.&.), (.|.))
-import Data.Int (Int64)
 import Data.List (foldl', isPrefixOf)
 import Data.List.Split (splitOn)
-import Data.Maybe (mapMaybe)
-import Data.Vector (Vector, (//), replicate, toList)
-import Util (bin2dec, dec2bin, replace, readLinesWith)
+import Data.Maybe (catMaybes)
+import Data.Map.Strict (Map, empty, fromList, union)
+import Util (bin2dec, dec2bin, replace, readLinesWith, subsets)
 
-type Mask = (Int64, Int64)
-data Op = Assign Int Int64 | SetMask Mask
-type State = (Vector Int64, Mask)
+type Mask = (Int, Int, [Int])
+data Op = Assign Int Int | SetMask Mask
+type State = (Map Int Int, Mask)
 
 readMask :: String -> Op
-readMask s = SetMask (bin2dec (replace m 'X' '1'), bin2dec (replace m 'X' '0'))
+readMask s = SetMask (andMask m, orMask m, floating)
   where
     m = drop 7 s
+    step :: Int -> Char -> Maybe Int
+    step i 'X' = Just i
+    step _ _   = Nothing
+    floating = map sum $ subsets $ catMaybes $ zipWith step (iterate (*2) 1) (reverse m)
+    andMask :: String -> Int
+    andMask = bin2dec . replace 'X' '0' . replace '0' '1'
+    orMask :: String -> Int
+    orMask = bin2dec . replace 'X' '0'
 
 readAssign :: String -> Op
 readAssign s = Assign (read addr) (read val)
@@ -28,22 +36,19 @@ readLine s
   | "mask" `isPrefixOf` s = readMask s
   | otherwise             = readAssign s
 
-maxAddress :: [Op] -> Int
-maxAddress = maximum . mapMaybe toAddress
+applyMask :: Mask -> Int -> [Int]
+applyMask (andM, orM, fl) addr = map (+ maskedAddr) fl
   where
-    toAddress :: Op -> Maybe Int
-    toAddress (Assign addr _) = Just addr
-    toAddress _               = Nothing
+    maskedAddr = (addr .&. andM) .|. orM
 
 applyOp :: State -> Op -> State
 applyOp (mem, _) (SetMask newMask) = (mem, newMask)
-applyOp (mem, mask) (Assign addr val) = (newMem, mask)
+applyOp (mem, mask) (Assign addr val) = (assigns `union` mem, mask)
   where
-    (andMask, orMask) = mask
-    newMem            = mem // [(addr, (val .&. andMask) .|. orMask)]
+    assigns = fromList $ map (, val) $ applyMask mask addr
 
 main :: IO ()
 main = do program <- readLinesWith readLine
-          let initialState = (replicate (1 + maxAddress program) 0, (0, 0))
+          let initialState = (empty, (0, 0, [])) :: State
               (endMem, _)= foldl' applyOp initialState program
-          print $ sum $ toList endMem
+          print $ sum endMem
