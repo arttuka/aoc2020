@@ -23,7 +23,7 @@ readOp :: String -> (Token, String)
 readOp (x:xs) = (Op x prec op, xs)
   where
     (prec, op) = case x of
-      '+' -> (1, (+))
+      '+' -> (2, (+))
       '*' -> (1, (*))
 
 getReader :: Char -> Reader
