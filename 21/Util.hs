@@ -18,3 +18,12 @@ readLines = readLinesWith read
 
 readGroupsWith :: ([String] -> a) -> IO [a]
 readGroupsWith f = fmap f . splitOn [""] <$> getLines
+
+isSingleton :: Set a -> Bool
+isSingleton = (1 ==) . size
+
+getSingleton :: Set a -> Maybe a
+getSingleton s = if isSingleton s then Just (elemAt 0 s) else Nothing
+
+if' :: (a -> Bool) -> (a -> b) -> (a -> b) -> a -> b
+if' pred thenF elseF x = if pred x then thenF x else elseF x
