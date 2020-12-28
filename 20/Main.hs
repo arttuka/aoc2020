@@ -2,16 +2,19 @@ module Main where
 
 import Debug.Trace (trace)
 
-import Control.Monad (join)
+import Control.Monad ((<=<), join)
 import Data.List (foldl', intercalate)
 import Data.Map.Strict (Map, (!), (!?), fromList)
 import Data.Maybe (fromMaybe, maybe)
 import Data.Set (Set, empty, insert, member, singleton)
-import Util (bin2dec, concatLines, findJust, groupBy, iSqrt, rpad, powerset, readGroupsWith, reverseBin, transpose)
+import Data.Vector (Vector, toList)
+import qualified Data.Vector as V
+import Util ((!!!), (///), addT, bin2dec, concatLines, findJust, from2DList, groupBy, iSqrt, rpad, powerset, readGroupsWith, reverseBin, tailInit, to2DList, transpose)
 
 --           Id    Rot   FlipV FlipH   U    R    D    L     Square
 type Tile = (Int, (Bool, Bool, Bool), (Int, Int, Int, Int), [String])
 type BorderToTile = Map Int (Map Int [Tile])
+type Image = Vector (Vector Char)
 
 readTile :: [String] -> Tile
 readTile (s:ss) = (id, (False, False, False), (bu, br, bd, bl), ss)
@@ -22,22 +25,31 @@ readTile (s:ss) = (id, (False, False, False), (bu, br, bd, bl), ss)
     bd   = bin2dec $ last ss
     bl   = bin2dec $ map head ss
 
-transformTile :: Tile -> [Tile]
-transformTile = (tfs <*>) . pure
+transform :: [a -> a] -> a -> [a]
+transform fns = (tfs <*>) . pure
   where
-    tfs = map (foldl' (.) id) $ powerset [rotate, flipV, flipH]
+    tfs = foldl' (.) id <$> powerset fns
 
-showTransform :: Tile -> String
-showTransform (_, (r, fv, fh), _, _) = [if r then 'T' else 'F', if fv then 'T' else 'F', if fh then 'T' else 'F']
+transformTile :: Tile -> [Tile]
+transformTile = transform [rotate, flipV, flipH]
+
+transformSquare :: [String] -> [[String]]
+transformSquare = transform [rotateSquare, flipVSquare, flipHSquare]
+
+showTransform :: (Bool, Bool, Bool) -> String
+showTransform (r, fv, fh) = [if r then 'T' else 'F', if fv then 'T' else 'F', if fh then 'T' else 'F']
+
+tileToLines :: Tile -> [String]
+tileToLines (id, tf, _, square) = rpad 11 ' '<$> (show id ++ " " ++ showTransform tf) : square
 
 showTile :: Tile -> String
-showTile t@(id, _, _, square) = intercalate "\n" $ (show id ++ " " ++ showTransform t) : square
+showTile = intercalate "\n" . tileToLines
 
 showGrid :: [[Tile]] -> String
-showGrid = intercalate "\n" . (concatLines . map squareWithId =<<)
-  where
-    squareWithId :: Tile -> [String]
-    squareWithId x = map (rpad 11 ' ') $ (show (tileId x) ++ " " ++ showTransform x) : tileSquare x
+showGrid = intercalate "\n" . (concatLines . fmap tileToLines =<<)
+
+showImage :: Image -> String
+showImage = intercalate "\n" . to2DList
 
 borderU :: Tile -> Int
 borderU (_, _, (bu, _, _, _), _) = bu
@@ -59,19 +71,28 @@ tileEq :: Tile -> Tile -> Bool
 tileEq (_, _, b1, s1) (_, _, b2, s2) = b1 == b2 && s1 == s2
 
 rotate :: Tile -> Tile
-rotate (id, (_, flipV, flipH), (bu, br, bd, bl), squares)
-  = (id, (True, flipV, flipH), (reverseBin bl, bu, reverseBin br, bd), transpose (reverse squares))
+rotate (id, (_, flipV, flipH), (bu, br, bd, bl), square)
+  = (id, (True, flipV, flipH), (reverseBin bl, bu, reverseBin br, bd), rotateSquare square)
 
 flipV :: Tile -> Tile
-flipV (id, (rot, _, flipH), (bu, br, bd, bl), squares)
- = (id, (rot, True, flipH), (bd, reverseBin br, bu, reverseBin bl), reverse squares)
+flipV (id, (rot, _, flipH), (bu, br, bd, bl), square)
+ = (id, (rot, True, flipH), (bd, reverseBin br, bu, reverseBin bl), flipVSquare square)
 
 flipH :: Tile -> Tile
-flipH (id, (rot, flipV, _), (bu, br, bd, bl), squares)
- = (id, (rot, flipV, True), (reverseBin bu, bl, reverseBin bd, br), map reverse squares)
+flipH (id, (rot, flipV, _), (bu, br, bd, bl), square)
+ = (id, (rot, flipV, True), (reverseBin bu, bl, reverseBin bd, br), flipHSquare square)
+
+rotateSquare :: [String] -> [String]
+rotateSquare = transpose . reverse
+
+flipVSquare :: [String] -> [String]
+flipVSquare = reverse
+
+flipHSquare :: [String] -> [String]
+flipHSquare = map reverse 
 
 makeBorderToTile :: [Tile] -> BorderToTile
-makeBorderToTile = fromList . zip [0..] . ([groupBy] <*> [borderU, borderR, borderD, borderL] <*>) . pure
+makeBorderToTile = fromList . zip [0..] . ([flip groupBy id] <*> [borderU, borderR, borderD, borderL] <*>) . pure
 
 arrangeTiles :: BorderToTile -> Int -> [Tile] -> Maybe [[Tile]]
 arrangeTiles b2t size tiles = findJust $ map start tiles
@@ -99,6 +120,28 @@ arrangeTiles b2t size tiles = findJust $ map start tiles
 calculateAnswer :: [[Tile]] -> Int
 calculateAnswer tiles = product $ map tileId [head (head tiles), last (head tiles), head (last tiles), last (last tiles)]
 
+findSeaMonsters :: Image -> Maybe Image
+findSeaMonsters image = case monsters of
+    []  -> Nothing
+    cs  -> Just (image /// [(x, y, 'O') | (x, y) <- toMonsterCoords =<< cs])
+  where
+    width    = V.length (V.head image)
+    height   = V.length image
+    monsters = [c | x <- [0..width - 20],
+                    y <- [0..height - 3],
+                    let c = (x, y),
+                    isMonsterAt c]
+    isMonsterAt :: (Int, Int) -> Bool
+    isMonsterAt = all (('#' ==) . (image !!!)) . toMonsterCoords
+    toMonsterCoords :: (Int, Int) -> [(Int, Int)]
+    toMonsterCoords = (<$> [(18, 0), (0, 1), (5, 1), (6, 1), (11, 1), (12, 1), (17, 1), (18, 1), (19, 1), (1, 2), (4, 2), (7, 2), (10, 2), (13, 2), (16, 2)]) . addT
+
+toImages :: [[Tile]] -> [Image]
+toImages = (from2DList <$>) . transformSquare . (concatLines . map cropBorder =<<)
+  where
+    cropBorder :: Tile -> [String]
+    cropBorder = map tailInit . tailInit . tileSquare
+
 main :: IO ()
 main = do tiles <- readGroupsWith readTile
           let size = iSqrt $ length tiles
@@ -106,6 +149,8 @@ main = do tiles <- readGroupsWith readTile
               b2t     = makeBorderToTile tfTiles
               result  = arrangeTiles b2t size tfTiles
               answer  = maybe 0 calculateAnswer result
-          putStrLn $ maybe "No result" showGrid result
-          print answer
+              monsterImage = findJust . (fmap findSeaMonsters <$> toImages) =<< result
+              roughness    = maybe 0 (length . filter ('#' ==) . (toList <=< toList)) monsterImage
+          putStrLn $ maybe "" showImage monsterImage
+          print roughness
 
