@@ -1,43 +1,38 @@
 module Main where
 
-import Data.List (iterate, splitAt)
-import Data.List.Split (chunksOf)
-import Data.Maybe (fromJust)
-import Data.Set (Set, fromList, member, size)
-import Util (elemIndex', insertAt, readWith)
+import Data.IntMap.Strict (IntMap, (!), fromList, insert)
+import Data.List (foldl', notElem, iterate)
+import Data.List.Split (chunksOf, divvy)
+import Util (readWith)
+
+maxCup = 1000000
 
 readCups :: [String] -> [Int]
 readCups = (read <$>) . chunksOf 1 . head
 
-getDestination :: Set Int -> Set Int -> Int -> Int
-getDestination allCups picked = step
-  where
-    maxCup = maximum allCups
-    step :: Int -> Int
-    step current
-      | current `member` allCups && not (current `member` picked) = current
-      | otherwise = step (if current <= 1 then maxCup else current - 1)
+getDestination :: [Int] -> Int -> Int
+getDestination picked current
+  | current > 0 && current `notElem` picked = current
+  | otherwise = getDestination picked (if current < 1 then maxCup else current - 1)
 
-makeMove :: Int -> (Set Int -> Int -> Int) -> [Int] -> [Int]
-makeMove len getDestination cups = newCups
-  where
-    current        = head cups
-    (picked, more) = splitAt 3 $ drop 1 $ cycle cups
-    otherCups      = take (len - 3) more
-    destination    = getDestination (fromList picked) (current - 1)
-    destIndex      = elemIndex' destination otherCups
-    newCups        = insertAt (destIndex + 1) picked otherCups
+insert' :: IntMap Int -> (Int, Int) -> IntMap Int
+insert' = flip $ uncurry insert
 
-getAnswer :: [Int] -> String
-getAnswer cups = show =<< take (len - 1) (drop (index + 1) $ cycle cups)
+makeMove :: (Int, Int, IntMap Int) -> (Int, Int, IntMap Int)
+makeMove (i, currentCup, cups) = (i + 1, nextCup, foldl' insert' cups updates)
   where
-    len   = length cups 
-    index = elemIndex' 1 cups
+    [_, p1, p2, p3, nextCup] = take 5 $ iterate (cups !) currentCup
+    destCup                  = getDestination [p1, p2, p3] (currentCup - 1)
+    destNext                 = cups ! destCup
+    updates                  = [(currentCup, nextCup), (destCup, p1), (p3, destNext)]
+  
+getAnswer :: (Int, Int, IntMap Int) -> Int
+getAnswer (_, _, cups) = product $ take 3 $ iterate (cups !) 1
 
 main :: IO ()
-main = do cups <- readWith readCups
-          let len     = length cups
-              allCups = fromList cups
-              getDest = getDestination allCups
-              moves   = iterate (makeMove len getDest) cups
-          putStrLn $ getAnswer $ moves !! 100
+main = do startingCups <- readWith readCups
+          let cups    = startingCups ++ [maximum startingCups + 1 .. maxCup] ++ [head startingCups]
+              cupsMap = fromList [(c1, c2) | [c1, c2] <- divvy 2 1 cups]
+              moves   = iterate makeMove (0, head startingCups, cupsMap)
+              result  = moves !! 10000000
+          print $ getAnswer result
