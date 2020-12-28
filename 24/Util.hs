@@ -1,8 +1,6 @@
-{-# LANGUAGE TupleSections #-}
 module Util where
 
 import Data.List.Split (splitOn)
-import Data.Map.Strict (Map, fromListWith)
 
 getLines :: IO [String]
 getLines = fmap lines getContents
@@ -21,6 +19,3 @@ readGroupsWith f = fmap f . splitOn [""] <$> getLines
 
 addT :: (Int, Int) -> (Int, Int) -> (Int, Int)
 addT (a, b) (c, d) = (a + c, b + d)
-
-frequencies :: Ord a => [a] -> Map a Int
-frequencies = fromListWith (+) . map (,1)

@@ -1,9 +1,13 @@
+{-# LANGUAGE TupleSections #-}
 module Main where
 
+import Control.Monad ((<=<))
 import Data.List (foldl')
-import Data.Map.Strict (Map, size)
+import Data.Map.Strict (Map, fromListWith)
 import qualified Data.Map.Strict as Map
-import Util (addT, frequencies, readLinesWith)
+import Data.Set (Set, fromList, member, size, toList, union)
+import qualified Data.Set as Set
+import Util (addT, readLinesWith)
 
 data Dir = E | SE | SW | W | NW | NE
 
@@ -24,12 +28,35 @@ dirToMove W  = (-1, 0)
 dirToMove NW = (0, -1)
 dirToMove NE = (1, -1)
 
+allMoves = fromList $ map dirToMove [E, SE, SW, W, NW, NE]
+
 move :: [Dir] -> (Int, Int)
 move = foldl' addT (0, 0) . map dirToMove
 
-countTiles :: [[Dir]] -> Int
-countTiles = size . Map.filter odd . frequencies . map move
+getAdjacentTiles :: (Int, Int) -> Set (Int, Int)
+getAdjacentTiles t = Set.map (addT t) allMoves
+
+countBlackTiles :: Set (Int, Int) -> (Int, Int) -> Int
+countBlackTiles tiles = size . Set.filter (`member` tiles) . getAdjacentTiles
+
+getAllTiles :: Set (Int, Int) -> Set (Int, Int)
+getAllTiles tiles = foldl' union tiles (getAdjacentTiles <$> toList tiles)
+
+isBlack :: Set (Int, Int) -> (Int, Int) -> Bool
+isBlack tiles p = (c == 2) || (p `member` tiles && c == 1)
+  where
+    c = countBlackTiles tiles p
+
+flipTiles :: Set (Int, Int) -> Set (Int, Int)
+flipTiles tiles = Set.filter (isBlack tiles) $ getAllTiles tiles
+
+initTiles :: [[Dir]] -> Set (Int, Int)
+initTiles moves = Map.keysSet $ Map.filter id tilemap
+  where
+    tilemap = fromListWith ((not .) . const) $ map ((,True) . move) moves
 
 main :: IO ()
 main = do moves <- readLinesWith readLine
-          print $ countTiles moves
+          let tiles  = initTiles moves 
+              states = iterate flipTiles tiles
+          print $ Set.size $ states !! 100
